@@ -82,6 +82,13 @@ func main() {
 		return
 	}
 
+	clone(pkg, ipkg)
+
+	rewrite(pkg, ipkg)
+
+}
+
+func clone(pkg, ipkg string) {
 	gargs := []string{"clone"}
 	if verbose {
 		gargs = append(gargs, "-v")
@@ -90,9 +97,15 @@ func main() {
 	gargs = append(gargs, u, ipkg)
 	run("git", gargs...)
 
-	os.RemoveAll(filepath.Join(ipkg, ".git"))
+	pwd, _ := os.Getwd()
+	defer os.Chdir(pwd)
 
-	rewrite(pkg, ipkg)
+	os.Chdir(ipkg)
+	os.RemoveAll(".git")
+	os.RemoveAll("go.mod")
+	os.RemoveAll("go.sum")
+	// run("go", "mod", "init")
+	// run("go", "mod", "tidy", "-v")
 
 }
 
