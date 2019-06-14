@@ -1,27 +1,71 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"flag"
 	"fmt"
-	_ "github/markbates/oncer"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
-	"github.com/gobuffalo/syncx"
+	"github.com/markbates/takeon/internal/github.com/fatih/astrewrite"
 )
 
+var verbose bool
+
+var module = func() string {
+	c := exec.Command("go", "env", "GOMOD")
+	b, err := c.CombinedOutput()
+	if err != nil {
+		log.Fatal(err)
+	}
+	p := string(bytes.TrimSpace(b))
+
+	f, err := os.Open(p)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	br := bufio.NewReader(f)
+	line, _, err := br.ReadLine()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pre := []byte("module ")
+	if !bytes.HasPrefix(line, pre) {
+		log.Fatal("you need a module, sorry")
+	}
+
+	res := bytes.TrimPrefix(line, pre)
+	res = bytes.TrimSpace(res)
+
+	return string(res)
+}()
+
 func main() {
-	args := os.Args[1:]
+
+	flag.BoolVar(&verbose, "v", false, "verbose")
+	flag.Parse()
+
+	args := flag.Args()
+
+	fmt.Printf("### main.go:41 module (%T) -> %q %+v\n", module, module, module)
 
 	if len(args) == 0 {
-		// log.Fatal("you must provide a package name")
-		args = append(args, "github.com/gobuffalo/syncx")
+
+		args = append(args, "github.com/fatih/astrewrite")
 	}
 
 	pkg := args[0]
@@ -32,7 +76,12 @@ func main() {
 
 	os.RemoveAll(ipkg)
 
-	run("git", "clone", u, ipkg)
+	gargs := []string{"clone"}
+	if verbose {
+		gargs = append(gargs, "-v")
+	}
+	gargs = append(gargs, u, ipkg)
+	run("git", gargs...)
 
 	os.RemoveAll(filepath.Join(ipkg, ".git"))
 
@@ -41,8 +90,6 @@ func main() {
 	run("go", "mod", "tidy", "-v")
 
 }
-
-var processed = &syncx.StringMap{}
 
 func rewrite(pkg string, ipkg string) {
 	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
@@ -57,37 +104,55 @@ func rewrite(pkg string, ipkg string) {
 		if strings.Contains(path, ipkg) {
 			return nil
 		}
+		if err := rewriteFile(path, pkg); err != nil {
+			return err
+		}
 
 		return nil
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func rewriteFile(f string, pkg string) error {
-	fset := token.NewFileSet() // positions are relative to fset
-	src, err := ioutil.ReadFile(f)
+func rewriteFile(p string, pkg string) error {
+	fset := token.NewFileSet()
+	src, err := ioutil.ReadFile(p)
 	if err != nil {
 		return err
 	}
 
-	f, err := parser.ParseExprFrom(fset, "src.go", src, 0)
+	f, err := parser.ParseFile(fset, p, src, 0)
 	if err != nil {
 		return err
 	}
 
-	// Inspect the AST and print all identifiers and literals.
-	ast.Inspect(f, func(n ast.Node) bool {
-		var s string
-		switch x := n.(type) {
-		case *ast.BasicLit:
-			s = x.Value
-		case *ast.Ident:
-			s = x.Name
+	rewritten := astrewrite.Walk(f, func(n ast.Node) (ast.Node, bool) {
+		is, ok := n.(*ast.ImportSpec)
+		if !ok {
+			return n, true
 		}
-		if s != "" {
-			fmt.Printf("%s:\t%s\n", fset.Position(n.Pos()), s)
+		if is.Path == nil {
+			return n, true
 		}
-		return true
+
+		if is.Path.Value != strconv.Quote(pkg) {
+			return n, true
+		}
+
+		is.Path.Value = strconv.Quote(path.Join(module, "internal", pkg))
+
+		return n, true
 	})
+
+	ff, err := os.Create(p)
+	if err != nil {
+		return err
+	}
+	defer ff.Close()
+	printer.Fprint(ff, fset, rewritten)
+
+	return nil
 }
 
 func run(s string, args ...string) {
