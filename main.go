@@ -2,11 +2,18 @@ package main
 
 import (
 	"fmt"
+	_ "github/markbates/oncer"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/gobuffalo/syncx"
 )
 
 func main() {
@@ -14,7 +21,7 @@ func main() {
 
 	if len(args) == 0 {
 		// log.Fatal("you must provide a package name")
-		args = append(args, "github.com/markbates/oncer")
+		args = append(args, "github.com/gobuffalo/syncx")
 	}
 
 	pkg := args[0]
@@ -29,8 +36,58 @@ func main() {
 
 	os.RemoveAll(filepath.Join(ipkg, ".git"))
 
+	rewrite(pkg, ipkg)
+
 	run("go", "mod", "tidy", "-v")
 
+}
+
+var processed = &syncx.StringMap{}
+
+func rewrite(pkg string, ipkg string) {
+	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if filepath.Ext(path) != ".go" {
+			return nil
+		}
+
+		if strings.Contains(path, ipkg) {
+			return nil
+		}
+
+		return nil
+	})
+}
+
+func rewriteFile(f string, pkg string) error {
+	fset := token.NewFileSet() // positions are relative to fset
+	src, err := ioutil.ReadFile(f)
+	if err != nil {
+		return err
+	}
+
+	f, err := parser.ParseExprFrom(fset, "src.go", src, 0)
+	if err != nil {
+		return err
+	}
+
+	// Inspect the AST and print all identifiers and literals.
+	ast.Inspect(f, func(n ast.Node) bool {
+		var s string
+		switch x := n.(type) {
+		case *ast.BasicLit:
+			s = x.Value
+		case *ast.Ident:
+			s = x.Name
+		}
+		if s != "" {
+			fmt.Printf("%s:\t%s\n", fset.Position(n.Pos()), s)
+		}
+		return true
+	})
 }
 
 func run(s string, args ...string) {
