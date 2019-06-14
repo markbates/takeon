@@ -15,13 +15,13 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/markbates/takeon/internal/github.com/fatih/astrewrite"
 )
 
 var verbose bool
+var remove bool
 
 var module = func() string {
 	c := exec.Command("go", "env", "GOMOD")
@@ -55,39 +55,44 @@ var module = func() string {
 }()
 
 func main() {
+	defer run("go", "mod", "tidy", "-v")
 
 	flag.BoolVar(&verbose, "v", false, "verbose")
+	flag.BoolVar(&remove, "out", false, "undoes things")
 	flag.Parse()
 
 	args := flag.Args()
 
-	fmt.Printf("### main.go:41 module (%T) -> %q %+v\n", module, module, module)
-
 	if len(args) == 0 {
-
-		args = append(args, "github.com/fatih/astrewrite")
+		log.Fatal("you must pass at least one package name")
 	}
 
 	pkg := args[0]
 
-	u := fmt.Sprintf("https://%s.git", pkg)
+	if pkg == "me" {
+		fmt.Println(lyrics)
+		return
+	}
 
 	ipkg := filepath.Join("internal", strings.ReplaceAll(pkg, "/", string(filepath.Separator)))
-
 	os.RemoveAll(ipkg)
+
+	if remove {
+		rewrite(pkg, ipkg)
+		return
+	}
 
 	gargs := []string{"clone"}
 	if verbose {
 		gargs = append(gargs, "-v")
 	}
+	u := fmt.Sprintf("https://%s.git", pkg)
 	gargs = append(gargs, u, ipkg)
 	run("git", gargs...)
 
 	os.RemoveAll(filepath.Join(ipkg, ".git"))
 
 	rewrite(pkg, ipkg)
-
-	run("go", "mod", "tidy", "-v")
 
 }
 
@@ -122,7 +127,7 @@ func rewriteFile(p string, pkg string) error {
 		return err
 	}
 
-	f, err := parser.ParseFile(fset, p, src, 0)
+	f, err := parser.ParseFile(fset, p, src, parser.ParseComments)
 	if err != nil {
 		return err
 	}
@@ -136,11 +141,12 @@ func rewriteFile(p string, pkg string) error {
 			return n, true
 		}
 
-		if is.Path.Value != strconv.Quote(pkg) {
+		ipkg := path.Join(module, "internal", pkg)
+		is.Path.Value = strings.ReplaceAll(is.Path.Value, ipkg, pkg)
+		if remove {
 			return n, true
 		}
-
-		is.Path.Value = strconv.Quote(path.Join(module, "internal", pkg))
+		is.Path.Value = strings.ReplaceAll(is.Path.Value, pkg, ipkg)
 
 		return n, true
 	})
@@ -165,3 +171,30 @@ func run(s string, args ...string) {
 		log.Fatal(err)
 	}
 }
+
+const lyrics = `Take On Me
+A-ha
+
+We're talking away
+I don't know what
+I'm to say I'll say it anyway
+Today's another day to find you
+Shying away
+I'll be coming for your love, okay?
+
+Take on me (take on me)
+Take me on (take on me)
+I'll be gone
+In a day or two
+
+So needless to say
+I'm odds and ends
+But I'll be stumbling away
+Slowly learning that life is okay
+Say after me
+It's no better to be safe than sorry
+
+Take on me (take on me)
+Take me on (take on me)
+I'll be gone
+In a day or two`
