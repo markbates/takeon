@@ -13,7 +13,7 @@ else
 endif
 
 deps:
-	go run main.go github.com/fatih/astrewrite
+	go run cmd/takeon/main.go github.com/fatih/astrewrite
 	make tidy
 
 build:
