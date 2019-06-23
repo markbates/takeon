@@ -1,8 +1,8 @@
 TAGS ?= ""
 GO_BIN ?= "go"
 
-install: deps
-	$(GO_BIN) install -tags ${TAGS} -v ./cmd/takeon
+install: 
+	$(GO_BIN) install -tags ${TAGS} -v ./cmd/here
 	make tidy
 
 tidy:
@@ -13,21 +13,21 @@ else
 endif
 
 deps:
-	go run cmd/takeon/main.go github.com/fatih/astrewrite
+	$(GO_BIN) get -tags ${TAGS} -t ./...
 	make tidy
 
-build:
-	$(GO_BIN) build -v ./cmd/takeon
+build: 
+	$(GO_BIN) build -v .
 	make tidy
 
-test:
+test: 
 	$(GO_BIN) test -cover -tags ${TAGS} ./...
 	make tidy
 
-ci-deps:
+ci-deps: 
 	$(GO_BIN) get -tags ${TAGS} -t ./...
 
-ci-test:
+ci-test: 
 	$(GO_BIN) test -tags ${TAGS} -race ./...
 
 lint:
@@ -47,7 +47,7 @@ endif
 	make install
 	make tidy
 
-release-test:
+release-test: 
 	$(GO_BIN) test -tags ${TAGS} -race ./...
 	make tidy
 

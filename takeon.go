@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/markbates/takeon/internal/takeon/github.com/fatih/astrewrite"
-	"github.com/gobuffalo/here"
+	"github.com/markbates/takeon/internal/takeon/github.com/gobuffalo/here"
 )
 
 const intpkg = "internal/takeon"
@@ -59,7 +59,6 @@ func clone(opts Options) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("using %s from %s\n", opts.PkgName, hi.Dir)
 
 	return filepath.Walk(hi.Dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -72,6 +71,10 @@ func clone(opts Options) error {
 		}
 
 		if base == "go.mod" || base == "go.sum" {
+			return nil
+		}
+
+		if strings.HasSuffix(base, "_test.go") {
 			return nil
 		}
 
