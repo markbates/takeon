@@ -17,8 +17,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/markbates/takeon/internal/github.com/fatih/astrewrite"
+	"github.com/fatih/astrewrite"
 )
+
+const intpkg = "internal/takeon"
 
 var verbose bool
 var remove bool
@@ -74,7 +76,8 @@ func main() {
 		return
 	}
 
-	ipkg := filepath.Join("internal", strings.ReplaceAll(pkg, "/", string(filepath.Separator)))
+	ipkg := filepath.Join(intpkg, strings.ReplaceAll(pkg, "/", string(filepath.Separator)))
+	fmt.Printf("### main.go:80 ipkg (%T) -> %q %+v\n", ipkg, ipkg, ipkg)
 	os.RemoveAll(ipkg)
 
 	if remove {
@@ -154,7 +157,7 @@ func rewriteFile(p string, pkg string) error {
 			return n, true
 		}
 
-		ipkg := path.Join(module, "internal", pkg)
+		ipkg := path.Join(module, intpkg, pkg)
 		is.Path.Value = strings.ReplaceAll(is.Path.Value, ipkg, pkg)
 		if remove {
 			return n, true
