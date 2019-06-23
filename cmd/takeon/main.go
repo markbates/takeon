@@ -78,16 +78,16 @@ func main() {
 
 	ipkg := filepath.Join(intpkg, strings.ReplaceAll(pkg, "/", string(filepath.Separator)))
 	fmt.Printf("### main.go:80 ipkg (%T) -> %q %+v\n", ipkg, ipkg, ipkg)
-	os.RemoveAll(ipkg)
+	// os.RemoveAll(ipkg)
+	//
+	// if remove {
+	// 	rewrite(pkg, ipkg)
+	// 	return
+	// }
 
-	if remove {
-		rewrite(pkg, ipkg)
-		return
-	}
-
-	clone(pkg, ipkg)
-
-	rewrite(pkg, ipkg)
+	// clone(pkg, ipkg)
+	//
+	// rewrite(pkg, ipkg)
 
 }
 
