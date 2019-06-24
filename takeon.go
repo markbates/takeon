@@ -51,6 +51,20 @@ func Me(opts Options) error {
 	return rewrite(opts)
 }
 
+func skipDir(name string, fn filepath.WalkFunc) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		base := filepath.Base(path)
+		if base == name {
+			return filepath.SkipDir
+		}
+		return fn(path, info, err)
+	}
+}
+
 func clone(opts Options) error {
 	if opts.Undo {
 		return nil
@@ -60,15 +74,12 @@ func clone(opts Options) error {
 		return err
 	}
 
-	return filepath.Walk(hi.Dir, func(path string, info os.FileInfo, err error) error {
+	fn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
 		base := filepath.Base(path)
-		if base == ".git" {
-			return filepath.SkipDir
-		}
 
 		if base == "go.mod" || base == "go.sum" {
 			return nil
@@ -92,7 +103,13 @@ func clone(opts Options) error {
 
 		os.MkdirAll(filepath.Dir(fp), 0755)
 		return ioutil.WriteFile(fp, input, 0644)
-	})
+	}
+
+	fn = skipDir(".git", fn)
+	fn = skipDir("node_modules", fn)
+	fn = skipDir("vendor", fn)
+
+	return filepath.Walk(hi.Dir, fn)
 }
 
 func rewrite(opts Options) error {
