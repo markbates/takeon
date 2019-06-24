@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/markbates/takeon/internal/filex"
 	"github.com/markbates/takeon/internal/takeon/github.com/fatih/astrewrite"
 	"github.com/markbates/takeon/internal/takeon/github.com/gobuffalo/here"
 )
@@ -51,20 +52,6 @@ func Me(opts Options) error {
 	return rewrite(opts)
 }
 
-func skipDir(name string, fn filepath.WalkFunc) filepath.WalkFunc {
-	return func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		base := filepath.Base(path)
-		if base == name {
-			return filepath.SkipDir
-		}
-		return fn(path, info, err)
-	}
-}
-
 func clone(opts Options) error {
 	if opts.Undo {
 		return nil
@@ -77,16 +64,6 @@ func clone(opts Options) error {
 	fn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
-		}
-
-		base := filepath.Base(path)
-
-		if base == "go.mod" || base == "go.sum" {
-			return nil
-		}
-
-		if strings.HasSuffix(base, "_test.go") {
-			return nil
 		}
 
 		if info.IsDir() {
@@ -105,9 +82,12 @@ func clone(opts Options) error {
 		return ioutil.WriteFile(fp, input, 0644)
 	}
 
-	fn = skipDir(".git", fn)
-	fn = skipDir("node_modules", fn)
-	fn = skipDir("vendor", fn)
+	fn = filex.SkipDir(".git", fn)
+	fn = filex.SkipDir("node_modules", fn)
+	fn = filex.SkipDir("vendor", fn)
+	fn = filex.SkipBase("go.mod", fn)
+	fn = filex.SkipBase("go.sum", fn)
+	fn = filex.SkipSuffix("_test.go", fn)
 
 	return filepath.Walk(hi.Dir, fn)
 }
