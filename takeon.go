@@ -16,7 +16,7 @@ import (
 
 	"github.com/markbates/takeon/internal/filex"
 	"github.com/markbates/takeon/internal/takeon/github.com/fatih/astrewrite"
-	"github.com/markbates/takeon/internal/takeon/github.com/gobuffalo/here"
+	"github.com/gobuffalo/here"
 )
 
 const intpkg = "internal/takeon"
