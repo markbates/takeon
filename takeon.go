@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gobuffalo/here"
 	"github.com/markbates/takeon/internal/filex"
 	"github.com/markbates/takeon/internal/takeon/github.com/fatih/astrewrite"
-	"github.com/gobuffalo/here"
 )
 
 const intpkg = "internal/takeon"
@@ -68,6 +68,13 @@ func clone(opts Options) error {
 
 		if info.IsDir() {
 			return nil
+		}
+
+		if filepath.Ext(path) != ".go" {
+			b := filepath.Base(path)
+			if !(strings.HasPrefix(b, "LICENSE") || strings.HasPrefix(b, "README")) {
+				return nil
+			}
 		}
 
 		input, err := ioutil.ReadFile(path)
