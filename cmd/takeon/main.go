@@ -58,8 +58,8 @@ func main() {
 	}
 
 	err := takeon.Me(takeon.Options{
-		PkgName:	pkg,
-		Undo:		remove,
+		PkgName: pkg,
+		Undo:    remove,
 	})
 
 	if err != nil {

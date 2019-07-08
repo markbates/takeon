@@ -22,11 +22,11 @@ import (
 const intpkg = "internal/takeon"
 
 type Options struct {
-	PkgName		string	// github.com/foo/bar
-	Undo		bool
-	info		here.Info
-	intPkgPath	string	// internal/takeon/github.com/foo/bar
-	replacePkg	string	// github.com/x/y/internal/takeon/github.com/foo/bar
+	PkgName    string // github.com/foo/bar
+	Undo       bool
+	info       here.Info
+	intPkgPath string // internal/takeon/github.com/foo/bar
+	replacePkg string // github.com/x/y/internal/takeon/github.com/foo/bar
 }
 
 func Me(opts Options) error {
@@ -122,6 +122,7 @@ func rewrite(opts Options) error {
 }
 
 func rewriteFile(p string, opts Options) error {
+	fmt.Println("rewriting:", p)
 	fset := token.NewFileSet()
 	src, err := ioutil.ReadFile(p)
 	if err != nil {
@@ -157,8 +158,20 @@ func rewriteFile(p string, opts Options) error {
 	if err != nil {
 		return err
 	}
-	defer ff.Close()
 	printer.Fprint(ff, fset, rewritten)
+	if err := ff.Close(); err != nil {
+		return err
+	}
+
+	if _, err := exec.LookPath("goimports"); err != nil {
+		return nil
+	}
+
+	fmt.Println("goimports:", p)
+
+	if err := run("goimports", "-w", p); err != nil {
+		return err
+	}
 
 	return nil
 }
